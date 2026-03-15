@@ -124,7 +124,7 @@ async def _rpush_json(key: str, payload: Dict[str, Any]) -> None:
     if redis is None:
         return
     try:
-        await redis.rpush(key, json.dumps(payload, ensure_ascii=False))
+        await redis.rpush(key, json.dumps(payload, ensure_ascii=False, default=str))
     except Exception as e:
         log.warning("Redis rpush failed: %s", e)
 

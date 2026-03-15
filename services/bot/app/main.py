@@ -165,7 +165,7 @@ async def forward_client_text_to_managers(user_message: Message, is_new_question
         return
 
     user = user_message.from_user
-    if not user or not user.text:
+    if not user or not user_message.text:
         return
 
     _user_label[user.id] = user.full_name
