@@ -61,6 +61,8 @@ class LeadIn(BaseModel):
     phone: str = Field("", description="Phone number")
     username: Optional[str] = Field(None, description="Telegram username")
     source: str = Field("telegram_bot", description="Lead source label")
+    campaign_tag: str = Field("transrussia", description="Campaign tag from /start")
+    status: str = Field("new", description="Lead status")
     meta: Optional[Dict[str, Any]] = None
 
 
@@ -200,13 +202,13 @@ async def health() -> dict:
 
 @app.post("/v1/tickets", response_model=TicketOut, tags=["tickets"])
 async def create_ticket(
-    ticket: TicketIn = Body(..., example={
+    ticket: TicketIn = Body(..., examples={"default": {"summary": "Ticket example", "value": {
         "tg_id": "125635340",
         "name": "Kesya",
         "topic": "question",
         "text": "Подскажите по ставке Москва→НН",
         "meta": {"source": "bot"},
-    }),
+    }}}),
     x_api_key: Optional[str] = Header(None, alias="x-api-key"),
 ):
     _require_auth(x_api_key)

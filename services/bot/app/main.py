@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-"""Standalone lead bot for TransRussia exhibition.
+"""Standalone TransRussia lead bot.
 
 Flow:
-1) /start -> greeting + contact request button
-2) user shares contact -> save lead in API storage
-3) notify manager group
-4) show buttons: quick estimate + website
+1) /start (with optional campaign tag) -> greeting + request_contact button
+2) contact shared -> save lead in API + notify manager group
+3) show two CTA buttons
 """
 
+import asyncio
 import logging
 import os
 from typing import Any
@@ -17,7 +17,10 @@ from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
+from aiogram.filters.command import CommandObject
 from aiogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
     KeyboardButton,
     Message,
     ReplyKeyboardMarkup,
@@ -37,12 +40,16 @@ MANAGER_GROUP_ID = int(os.environ.get("MANAGER_GROUP_ID", "0"))
 
 WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://aeza-logistics.ru")
 QUICK_CALC_URL = os.environ.get("QUICK_CALC_URL", WEBSITE_URL)
+DEFAULT_SOURCE = os.environ.get("LEAD_SOURCE", "transrussia_qr")
 
 START_TEXT = (
     "Привет! 👋\n\n"
-    "Это отдельный Telegram-бот для сбора лидов на выставке TransRussia.\n"
-    "Нажмите кнопку «Оставить контакт», чтобы менеджер связался с вами."
+    "Это отдельный Telegram-бот проекта для выставки TransRussia.\n"
+    "Оставьте контакт одной кнопкой"
 )
+
+# campaign tag from /start for users who haven't shared contact yet
+_pending_campaign_by_user: dict[int, str] = {}
 
 bot = Bot(TELEGRAM_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
@@ -67,6 +74,13 @@ def post_contact_keyboard() -> InlineKeyboardMarkup:
     )
 
 
+def _sanitize_campaign_tag(tag: str | None) -> str:
+    raw = (tag or "").strip()
+    if not raw:
+        return "transrussia"
+    return raw[:64]
+
+
 async def save_lead(payload: dict[str, Any]) -> dict[str, Any]:
     url = f"{API_BASE_URL}/v1/leads"
     headers = {"Content-Type": "application/json"}
@@ -88,20 +102,28 @@ async def notify_managers(lead_id: str, lead: dict[str, Any], user: Message) -> 
 
     name = (lead.get("name") or "").strip() or "Без имени"
     phone = (lead.get("phone") or "").strip() or "—"
+    campaign_tag = lead.get("campaign_tag") or "transrussia"
     username = f"@{user.from_user.username}" if user.from_user and user.from_user.username else "—"
+
     text = (
         "📥 <b>Новый лид (TransRussia)</b>\n"
         f"ID: <code>{lead_id}</code>\n"
         f"Имя: {name}\n"
         f"Телефон: {phone}\n"
         f"Telegram: {username}\n"
-        f"TG ID: <code>{user.from_user.id if user.from_user else '—'}</code>"
+        f"TG ID: <code>{user.from_user.id if user.from_user else '—'}</code>\n"
+        f"Источник: <code>{lead.get('source', DEFAULT_SOURCE)}</code>\n"
+        f"Кампания: <code>{campaign_tag}</code>"
     )
     await bot.send_message(chat_id=MANAGER_GROUP_ID, text=text)
 
 
 @router.message(CommandStart())
-async def handle_start(message: Message) -> None:
+async def handle_start(message: Message, command: CommandObject) -> None:
+    campaign_tag = _sanitize_campaign_tag(command.args)
+    if message.from_user:
+        _pending_campaign_by_user[message.from_user.id] = campaign_tag
+
     await message.answer(START_TEXT, reply_markup=contact_keyboard())
 
 
@@ -114,12 +136,16 @@ async def handle_contact(message: Message) -> None:
         await message.answer("Не удалось получить контакт. Попробуйте ещё раз через кнопку.")
         return
 
+    campaign_tag = _pending_campaign_by_user.pop(user.id, "transrussia")
+
     lead_payload = {
         "tg_id": str(user.id),
         "name": contact.first_name or user.full_name or "",
         "phone": contact.phone_number or "",
         "username": user.username,
-        "source": "telegram_transrussia_bot",
+        "source": DEFAULT_SOURCE,
+        "campaign_tag": campaign_tag,
+        "status": "new",
         "meta": {
             "chat_id": message.chat.id,
             "shared_contact_user_id": contact.user_id,
@@ -136,7 +162,7 @@ async def handle_contact(message: Message) -> None:
             reply_markup=ReplyKeyboardRemove(),
         )
         await message.answer(
-            "Вы можете сразу перейти к следующим шагам:",
+            "Что хотите сделать дальше?",
             reply_markup=post_contact_keyboard(),
         )
     except Exception as exc:
@@ -148,11 +174,9 @@ async def handle_contact(message: Message) -> None:
 
 
 async def main() -> None:
-    log.info("Lead bot started")
+    log.info("Standalone TransRussia lead bot started")
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
-    import asyncio
-
     asyncio.run(main())

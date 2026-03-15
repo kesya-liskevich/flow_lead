@@ -6,6 +6,9 @@ services:
     environment:
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=${REDIS_URL}
+      - WEBSITE_URL=${WEBSITE_URL}
+      - QUICK_CALC_URL=${QUICK_CALC_URL}
+      - LEAD_SOURCE=${LEAD_SOURCE:-transrussia_qr}
       - API_SECRET=${API_SECRET}
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     depends_on:
@@ -26,6 +29,9 @@ services:
       - API_SECRET=${API_SECRET}
       - MANAGER_GROUP_ID=${MANAGER_GROUP_ID}
       - REDIS_URL=${REDIS_URL}
+      - WEBSITE_URL=${WEBSITE_URL}
+      - QUICK_CALC_URL=${QUICK_CALC_URL}
+      - LEAD_SOURCE=${LEAD_SOURCE:-transrussia_qr}
     depends_on:
       - api
       - redis
