@@ -235,7 +235,7 @@ async def ask_question_callback(callback: CallbackQuery) -> None:
     if callback.from_user:
         _awaiting_question_from_user.add(callback.from_user.id)
     if callback.message:
-        await callback.message.answer("Напишите ваш вопрос одним сообщением — передам менеджеру.")
+        await callback.message.answer("Напишите ваш вопрос")
     await callback.answer()
 
 
@@ -280,14 +280,14 @@ async def manager_message_router(message: Message) -> None:
     # forum topic mode
     if message.message_thread_id and message.message_thread_id in _thread_ticket_user:
         client_id = _thread_ticket_user[message.message_thread_id]
-        await bot.send_message(chat_id=client_id, text=f"Ответ менеджера:\n{message.text}")
+        await bot.send_message(chat_id=client_id, text=message.text)
         return
 
     # reply mode fallback
     if message.reply_to_message:
         client_id = _manager_msg_to_user.get(message.reply_to_message.message_id)
         if client_id:
-            await bot.send_message(chat_id=client_id, text=f"Ответ менеджера:\n{message.text}")
+            await bot.send_message(chat_id=client_id, text=message.text)
             mirror = await bot.send_message(
                 chat_id=MANAGER_GROUP_ID,
                 text=f"↩️ Клиенту <code>{client_id}</code> отправлен ответ.",
@@ -309,7 +309,11 @@ async def user_text_router(message: Message) -> None:
         _awaiting_question_from_user.discard(user.id)
 
     if is_new_question or user.id in _user_ticket_thread:
-        await forward_client_text_to_managers(user_message=message, is_new_question=is_new_question)
+        try:
+            await forward_client_text_to_managers(user_message=message, is_new_question=is_new_question)
+        except Exception as exc:
+            log.exception("Failed to forward client message: %s", exc)
+            await message.answer("Не удалось отправить сообщение менеджеру, попробуйте ещё раз.")
 
 
 async def main() -> None:
