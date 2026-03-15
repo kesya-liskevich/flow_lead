@@ -23,10 +23,9 @@ services:
       - API_BASE_URL=http://api:8000
       - BOT_PUBLIC_URL=${BOT_PUBLIC_URL}
       - BOT_SECRET=${BOT_SECRET}
+      - API_SECRET=${API_SECRET}
       - MANAGER_GROUP_ID=${MANAGER_GROUP_ID}
       - REDIS_URL=${REDIS_URL}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GPT_RATE_MODEL=${GPT_RATE_MODEL:-gpt-4o-mini}
     depends_on:
       - api
       - redis
