@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Standalone TransRussia lead bot.
-
-Flow:
-1) /start (with optional campaign tag) -> greeting + request_contact button
-2) contact shared -> save lead in API + notify manager group
-3) show two CTA buttons
-"""
+"""Standalone TransRussia lead bot with lightweight manager ticket relay."""
 
 import asyncio
 import logging
@@ -39,17 +33,20 @@ API_SECRET = os.environ.get("API_SECRET", "")
 MANAGER_GROUP_ID = int(os.environ.get("MANAGER_GROUP_ID", "0"))
 
 WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://aeza-logistics.ru")
-QUICK_CALC_URL = os.environ.get("QUICK_CALC_URL", WEBSITE_URL)
+QUICK_CALC_URL = os.environ.get("QUICK_CALC_URL", "https://t.me/aezalogisticbot")
 DEFAULT_SOURCE = os.environ.get("LEAD_SOURCE", "transrussia_qr")
 
 START_TEXT = (
-    "Привет! 👋\n\n"
-    "Это отдельный Telegram-бот проекта для выставки TransRussia.\n"
-    "Оставьте контакт одной кнопкой — менеджер свяжется с вами и поможет с расчётом."
+    "Привет, вы в Потоке!\n"
+    "Оставьте контакт одной кнопкой, чтобы получить спецпредложение для участников выставки TransRussia."
 )
 
-# campaign tag from /start for users who haven't shared contact yet
+THANK_YOU_TEXT = "Спасибо! Контакт сохранён, мы свяжемся с вами.\nЧто хотите делать дальше?"
+
 _pending_campaign_by_user: dict[int, str] = {}
+_awaiting_question_from_user: set[int] = set()
+_open_ticket_users: set[int] = set()
+_manager_msg_to_user: dict[int, int] = {}
 
 bot = Bot(TELEGRAM_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
@@ -70,6 +67,7 @@ def post_contact_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [InlineKeyboardButton(text="Быстрый просчёт", url=QUICK_CALC_URL)],
             [InlineKeyboardButton(text="Перейти на сайт", url=WEBSITE_URL)],
+            [InlineKeyboardButton(text="Задать вопрос", callback_data="ask_question")],
         ]
     )
 
@@ -118,6 +116,31 @@ async def notify_managers(lead_id: str, lead: dict[str, Any], user: Message) -> 
     await bot.send_message(chat_id=MANAGER_GROUP_ID, text=text)
 
 
+async def send_question_to_managers(user_message: Message) -> None:
+    if not MANAGER_GROUP_ID:
+        await user_message.answer("Вопрос принят, но чат менеджеров не настроен. Попробуйте позже.")
+        return
+
+    user = user_message.from_user
+    if not user:
+        return
+
+    username = f"@{user.username}" if user.username else "—"
+    text = (
+        "❓ <b>Новый вопрос от лида</b>\n"
+        f"Клиент: {user.full_name}\n"
+        f"TG ID: <code>{user.id}</code>\n"
+        f"Username: {username}\n\n"
+        f"<b>Вопрос:</b>\n{user_message.text or ''}\n\n"
+        "Ответьте реплаем на это сообщение — ответ уйдёт клиенту в бот."
+    )
+    sent = await bot.send_message(chat_id=MANAGER_GROUP_ID, text=text)
+    _manager_msg_to_user[sent.message_id] = user.id
+
+    await user_message.answer("Вопрос отправлен менеджеру. Напишите следующее сообщение, чтобы продолжить диалог.")
+    _open_ticket_users.add(user.id)
+
+
 @router.message(CommandStart())
 async def handle_start(message: Message, command: CommandObject) -> None:
     campaign_tag = _sanitize_campaign_tag(command.args)
@@ -157,20 +180,61 @@ async def handle_contact(message: Message) -> None:
         lead_id = saved.get("id", "unknown")
         await notify_managers(lead_id=lead_id, lead=lead_payload, user=message)
 
-        await message.answer(
-            "Спасибо! Контакт сохранён, менеджер скоро свяжется с вами.",
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        await message.answer(
-            "Что хотите сделать дальше?",
-            reply_markup=post_contact_keyboard(),
-        )
+        await message.answer(THANK_YOU_TEXT, reply_markup=ReplyKeyboardRemove())
+        await message.answer("Выберите действие:", reply_markup=post_contact_keyboard())
     except Exception as exc:
         log.exception("Contact processing failed: %s", exc)
         await message.answer(
             "Не удалось сохранить контакт. Попробуйте ещё раз чуть позже.",
             reply_markup=ReplyKeyboardRemove(),
         )
+
+
+@router.callback_query(F.data == "ask_question")
+async def ask_question_callback(callback) -> None:
+    user = callback.from_user
+    if user:
+        _awaiting_question_from_user.add(user.id)
+    await callback.message.answer("Напишите ваш вопрос одним сообщением — передам менеджеру.")
+    await callback.answer()
+
+
+@router.message(F.chat.id == MANAGER_GROUP_ID, F.reply_to_message)
+async def manager_reply_to_ticket(message: Message) -> None:
+    if not message.reply_to_message:
+        return
+    client_id = _manager_msg_to_user.get(message.reply_to_message.message_id)
+    if not client_id:
+        return
+    if not message.text:
+        return
+
+    await bot.send_message(chat_id=client_id, text=f"Ответ менеджера:\n{message.text}")
+    mirror = await bot.send_message(
+        chat_id=MANAGER_GROUP_ID,
+        text=f"↩️ Клиенту <code>{client_id}</code> отправлен ответ.",
+        reply_to_message_id=message.reply_to_message.message_id,
+    )
+    _manager_msg_to_user[mirror.message_id] = client_id
+
+
+@router.message(F.text)
+async def text_router(message: Message) -> None:
+    user = message.from_user
+    if not user:
+        return
+
+    if message.chat.id == MANAGER_GROUP_ID:
+        return
+
+    if user.id in _awaiting_question_from_user:
+        _awaiting_question_from_user.discard(user.id)
+        await send_question_to_managers(message)
+        return
+
+    if user.id in _open_ticket_users:
+        await send_question_to_managers(message)
+        return
 
 
 async def main() -> None:
