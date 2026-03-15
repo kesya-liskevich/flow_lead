@@ -25,6 +25,8 @@ from aiogram.types import (
     Message,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
 )
 
 
@@ -43,7 +45,7 @@ DEFAULT_SOURCE = os.environ.get("LEAD_SOURCE", "transrussia_qr")
 START_TEXT = (
     "Привет! 👋\n\n"
     "Это отдельный Telegram-бот проекта для выставки TransRussia.\n"
-    "Оставьте контакт одной кнопкой — менеджер свяжется с вами и поможет с расчётом."
+    "Оставьте контакт одной кнопкой"
 )
 
 # campaign tag from /start for users who haven't shared contact yet
