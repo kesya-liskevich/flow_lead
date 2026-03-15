@@ -54,6 +54,20 @@ class TicketOut(TicketIn):
     id: str
     created_at: datetime
 
+
+class LeadIn(BaseModel):
+    tg_id: str = Field(..., description="Telegram user id")
+    name: str = Field("", description="Lead name")
+    phone: str = Field("", description="Phone number")
+    username: Optional[str] = Field(None, description="Telegram username")
+    source: str = Field("telegram_bot", description="Lead source label")
+    meta: Optional[Dict[str, Any]] = None
+
+
+class LeadOut(LeadIn):
+    id: str
+    created_at: datetime
+
 # Flexible draft (keep shape aligned with the bot)
 class QuoteDraft(BaseModel):
     # Allow any content – we only need to pass it through and archive
@@ -95,6 +109,7 @@ app.add_middleware(
 
 redis: Optional["aioredis.Redis"] = None
 _mem_tickets: List[TicketOut] = []
+_mem_leads: List[LeadOut] = []
 
 # ---------- Helpers ----------
 def _require_auth(x_api_key: Optional[str]) -> None:
@@ -121,6 +136,19 @@ async def save_ticket(t: TicketIn) -> TicketOut:
     _mem_tickets.append(out)
     if len(_mem_tickets) > 5000:
         del _mem_tickets[:-1000]
+    return out
+
+
+async def save_lead(lead: LeadIn) -> LeadOut:
+    out = LeadOut(
+        id=f"lead_{int(datetime.utcnow().timestamp()*1000)}",
+        created_at=datetime.utcnow(),
+        **lead.model_dump(),
+    )
+    await _rpush_json("leads:queue", out.model_dump())
+    _mem_leads.append(out)
+    if len(_mem_leads) > 5000:
+        del _mem_leads[:-1000]
     return out
 
 # Optional GPT fallback (disabled by default)
@@ -179,7 +207,7 @@ async def create_ticket(
         "text": "Подскажите по ставке Москва→НН",
         "meta": {"source": "bot"},
     }),
-    x_api_key: Optional[str] = Header(None, convert_underscores=False),
+    x_api_key: Optional[str] = Header(None, alias="x-api-key"),
 ):
     _require_auth(x_api_key)
     try:
@@ -189,11 +217,24 @@ async def create_ticket(
         log.exception("create_ticket failed: %s", e)
         raise HTTPException(status_code=500, detail="failed to save ticket")
 
+
+@app.post("/v1/leads", response_model=LeadOut, tags=["leads"])
+async def create_lead(
+    lead: LeadIn,
+    x_api_key: Optional[str] = Header(None, alias="x-api-key"),
+):
+    _require_auth(x_api_key)
+    try:
+        return await save_lead(lead)
+    except Exception as e:
+        log.exception("create_lead failed: %s", e)
+        raise HTTPException(status_code=500, detail="failed to save lead")
+
 @app.post("/v1/rate", response_model=RateResponse, tags=["rate"])
 async def rate_endpoint(
     req: RateRequest,
     request: Request,
-    x_api_key: Optional[str] = Header(None, convert_underscores=False),
+    x_api_key: Optional[str] = Header(None, alias="x-api-key"),
 ):
     _require_auth(x_api_key)
     # Prefer the rate computed by the bot
@@ -222,7 +263,7 @@ async def rate_endpoint(
 async def apply_endpoint(
     req: ApplyRequest,
     request: Request,
-    x_api_key: Optional[str] = Header(None, convert_underscores=False),
+    x_api_key: Optional[str] = Header(None, alias="x-api-key"),
 ):
     _require_auth(x_api_key)
     payload = {
