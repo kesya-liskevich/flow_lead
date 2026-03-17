@@ -8,6 +8,7 @@ services:
       - REDIS_URL=${REDIS_URL}
       - WEBSITE_URL=${WEBSITE_URL:-https://flowlog.ru/}
       - QUICK_CALC_URL=${QUICK_CALC_URL:-https://t.me/AiFlowlog_bot}
+      - DEMO_AI_AGENT_URL=${DEMO_AI_AGENT_URL:-https://t.me/AiFlowlog_bot}
       - LEAD_SOURCE=${LEAD_SOURCE:-transrussia_qr}
       - API_SECRET=${API_SECRET}
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
@@ -31,6 +32,7 @@ services:
       - REDIS_URL=${REDIS_URL}
       - WEBSITE_URL=${WEBSITE_URL:-https://flowlog.ru/}
       - QUICK_CALC_URL=${QUICK_CALC_URL:-https://t.me/AiFlowlog_bot}
+      - DEMO_AI_AGENT_URL=${DEMO_AI_AGENT_URL:-https://t.me/AiFlowlog_bot}
       - LEAD_SOURCE=${LEAD_SOURCE:-transrussia_qr}
     depends_on:
       - api

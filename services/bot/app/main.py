@@ -36,6 +36,7 @@ MANAGER_GROUP_ID = int(os.environ.get("MANAGER_GROUP_ID", "0"))
 
 WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://flowlog.ru/")
 QUICK_CALC_URL = os.environ.get("QUICK_CALC_URL", "https://t.me/AiFlowlog_bot")
+DEMO_AI_AGENT_URL = os.environ.get("DEMO_AI_AGENT_URL", "https://t.me/AiFlowlog_bot")
 DEFAULT_SOURCE = os.environ.get("LEAD_SOURCE", "transrussia_qr")
 
 START_TEXT = (
@@ -68,9 +69,10 @@ def contact_keyboard() -> ReplyKeyboardMarkup:
 def post_contact_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Пример реализации", url=QUICK_CALC_URL)],
-            [InlineKeyboardButton(text="Перейти на сайт", url=WEBSITE_URL)],
+            [InlineKeyboardButton(text="Сайт Потока", url=WEBSITE_URL)],
+            [InlineKeyboardButton(text="Демо ai-агента", url=DEMO_AI_AGENT_URL)],
             [InlineKeyboardButton(text="Задать вопрос", callback_data="ask_question")],
+            [InlineKeyboardButton(text="Пример реализации", url=QUICK_CALC_URL)],
         ]
     )
 
