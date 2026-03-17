@@ -6,8 +6,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=${REDIS_URL}
-      - WEBSITE_URL=${WEBSITE_URL:-https://aeza-logistics.ru}
-      - QUICK_CALC_URL=${QUICK_CALC_URL:-https://aeza-logistics.ru}
+      - WEBSITE_URL=${WEBSITE_URL:-https://flowlog.ru/}
+      - QUICK_CALC_URL=${QUICK_CALC_URL:-https://t.me/AiFlowlog_bot}
       - LEAD_SOURCE=${LEAD_SOURCE:-transrussia_qr}
       - API_SECRET=${API_SECRET}
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
@@ -29,8 +29,8 @@ services:
       - API_SECRET=${API_SECRET}
       - MANAGER_GROUP_ID=${MANAGER_GROUP_ID}
       - REDIS_URL=${REDIS_URL}
-      - WEBSITE_URL=${WEBSITE_URL:-https://aeza-logistics.ru}
-      - QUICK_CALC_URL=${QUICK_CALC_URL:-https://aeza-logistics.ru}
+      - WEBSITE_URL=${WEBSITE_URL:-https://flowlog.ru/}
+      - QUICK_CALC_URL=${QUICK_CALC_URL:-https://t.me/AiFlowlog_bot}
       - LEAD_SOURCE=${LEAD_SOURCE:-transrussia_qr}
     depends_on:
       - api

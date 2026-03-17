@@ -34,8 +34,8 @@ API_BASE_URL = os.environ.get("API_BASE_URL", "http://api:8000").rstrip("/")
 API_SECRET = os.environ.get("API_SECRET", "")
 MANAGER_GROUP_ID = int(os.environ.get("MANAGER_GROUP_ID", "0"))
 
-WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://aeza-logistics.ru")
-QUICK_CALC_URL = os.environ.get("QUICK_CALC_URL", "https://t.me/aezalogisticbot")
+WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://flowlog.ru/")
+QUICK_CALC_URL = os.environ.get("QUICK_CALC_URL", "https://t.me/AiFlowlog_bot")
 DEFAULT_SOURCE = os.environ.get("LEAD_SOURCE", "transrussia_qr")
 
 START_TEXT = (
@@ -68,7 +68,7 @@ def contact_keyboard() -> ReplyKeyboardMarkup:
 def post_contact_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Быстрый просчёт", url=QUICK_CALC_URL)],
+            [InlineKeyboardButton(text="Пример реализации", url=QUICK_CALC_URL)],
             [InlineKeyboardButton(text="Перейти на сайт", url=WEBSITE_URL)],
             [InlineKeyboardButton(text="Задать вопрос", callback_data="ask_question")],
         ]
