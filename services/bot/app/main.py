@@ -34,7 +34,7 @@ API_BASE_URL = os.environ.get("API_BASE_URL", "http://api:8000").rstrip("/")
 API_SECRET = os.environ.get("API_SECRET", "")
 MANAGER_GROUP_ID = int(os.environ.get("MANAGER_GROUP_ID", "0"))
 
-WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://flowlog.ru/")
+WEBSITE_URL = os.environ.get("FLOW_WEBSITE_URL", "https://flowlog.ru/")
 QUICK_CALC_URL = os.environ.get("QUICK_CALC_URL", "https://t.me/AiFlowlog_bot")
 DEMO_AI_AGENT_URL = os.environ.get("DEMO_AI_AGENT_URL", "https://t.me/AiFlowlog_bot")
 DEFAULT_SOURCE = os.environ.get("LEAD_SOURCE", "transrussia_qr")
