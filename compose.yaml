@@ -6,6 +6,10 @@ services:
     environment:
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=${REDIS_URL}
+      - FLOW_WEBSITE_URL=${FLOW_WEBSITE_URL:-https://flowlog.ru/}
+      - QUICK_CALC_URL=${QUICK_CALC_URL:-https://t.me/AiFlowlog_bot}
+      - DEMO_AI_AGENT_URL=${DEMO_AI_AGENT_URL:-https://t.me/AiFlowlog_bot}
+      - LEAD_SOURCE=${LEAD_SOURCE:-transrussia_qr}
       - API_SECRET=${API_SECRET}
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     depends_on:
@@ -23,10 +27,13 @@ services:
       - API_BASE_URL=http://api:8000
       - BOT_PUBLIC_URL=${BOT_PUBLIC_URL}
       - BOT_SECRET=${BOT_SECRET}
+      - API_SECRET=${API_SECRET}
       - MANAGER_GROUP_ID=${MANAGER_GROUP_ID}
       - REDIS_URL=${REDIS_URL}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GPT_RATE_MODEL=${GPT_RATE_MODEL:-gpt-4o-mini}
+      - FLOW_WEBSITE_URL=${FLOW_WEBSITE_URL:-https://flowlog.ru/}
+      - QUICK_CALC_URL=${QUICK_CALC_URL:-https://t.me/AiFlowlog_bot}
+      - DEMO_AI_AGENT_URL=${DEMO_AI_AGENT_URL:-https://t.me/AiFlowlog_bot}
+      - LEAD_SOURCE=${LEAD_SOURCE:-transrussia_qr}
     depends_on:
       - api
       - redis
@@ -41,7 +48,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "55432:5432"
+      - "${POSTGRES_HOST_PORT:-55433}:5432"
     restart: unless-stopped
 
   redis:
@@ -50,7 +57,7 @@ services:
     volumes:
       - redisdata:/data
     ports:
-      - "6379:6379"
+      - "${REDIS_HOST_PORT:-6380}:6379"
     restart: unless-stopped
 
   nginx:
@@ -58,7 +65,7 @@ services:
     depends_on:
       - api
     ports:
-      - "80:80"
+      - "${NGINX_HOST_PORT:-8081}:80"
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
